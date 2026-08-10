@@ -9,7 +9,7 @@ function formatSql(sql: string): string {
   let formatted = sql.replace(/\?/g, () => `$${++paramCount}`);
   formatted = formatted.replace(/datetime\('now'\)/gi, 'CURRENT_TIMESTAMP');
   formatted = formatted.replace(/date\('now'\)/gi, 'CURRENT_DATE');
-  formatted = formatted.replace(/strftime\('%Y-%m',\s*([^)]+)\)/gi, "to_char($1, 'YYYY-MM')");
+  formatted = formatted.replace(/strftime\('%Y-%m',\s*([^)]+)\)/gi, "SUBSTRING($1, 1, 7)");
   return formatted;
 }
 
