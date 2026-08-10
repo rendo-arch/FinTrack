@@ -7,7 +7,7 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const db = await getDb();
-    const data = getAll(db,
+    const data = await getAll(db,
       `SELECT b.*, COALESCE((
         SELECT SUM(e.amount) FROM expenses e 
         WHERE e.user_id = b.user_id AND e.category = b.category 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Category, budget_limit, period, and start_date are required' }, { status: 400 });
     }
     const db = await getDb();
-    const id = runInsert(db,
+    const id = await runInsert(db,
       'INSERT INTO budgets (user_id, category, budget_limit, period, start_date) VALUES (?, ?, ?, ?, ?)',
       [user.id, category, Number(budget_limit), period, start_date]);
     return NextResponse.json({ success: true, data: { id }, message: 'Budget added successfully' });

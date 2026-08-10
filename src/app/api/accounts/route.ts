@@ -7,7 +7,7 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const db = await getDb();
-    const data = getAll(db,
+    const data = await getAll(db,
       `SELECT a.*,
         a.initial_balance 
         + COALESCE((SELECT SUM(amount) FROM income WHERE account_id = a.id), 0)
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name and type are required' }, { status: 400 });
     }
     const db = await getDb();
-    const id = runInsert(db,
+    const id = await runInsert(db,
       'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES (?, ?, ?, ?, ?, ?)',
       [user.id, name, type, Number(initial_balance || 0), icon || '', color || '']);
     return NextResponse.json({ success: true, data: { id }, message: 'Account added successfully' });

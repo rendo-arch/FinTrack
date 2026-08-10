@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     }
 
     const db = await getDb();
-    const user = getOne<{ id: number; name: string; email: string; password_hash: string }>(
+    const user = await getOne<{ id: number; name: string; email: string; password_hash: string }>(
       db,
       'SELECT id, name, email, password_hash FROM users WHERE email = ?',
       [email]

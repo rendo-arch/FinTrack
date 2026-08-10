@@ -1,131 +1,118 @@
-import type { Database as SqlJsDatabase } from 'sql.js';
+import { Pool } from 'pg';
 
-export function initializeDatabase(db: SqlJsDatabase) {
-  db.run(`
+export async function initializeDatabase(pool: Pool) {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       currency TEXT NOT NULL DEFAULT '₱',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS accounts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       type TEXT NOT NULL CHECK(type IN ('cash', 'bank', 'e-wallet', 'savings', 'other')),
-      initial_balance REAL NOT NULL DEFAULT 0,
+      initial_balance DOUBLE PRECISION NOT NULL DEFAULT 0,
       icon TEXT DEFAULT '💳',
       color TEXT DEFAULT '#3b82f6',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS income (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      account_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
       source TEXT NOT NULL,
       category TEXT NOT NULL DEFAULT 'other',
-      amount REAL NOT NULL CHECK(amount > 0),
+      amount DOUBLE PRECISION NOT NULL CHECK(amount > 0),
       date TEXT NOT NULL,
       description TEXT DEFAULT '',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS expenses (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      account_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       category TEXT NOT NULL DEFAULT 'other',
-      amount REAL NOT NULL CHECK(amount > 0),
+      amount DOUBLE PRECISION NOT NULL CHECK(amount > 0),
       payment_method TEXT DEFAULT 'Cash',
       date TEXT NOT NULL,
       description TEXT DEFAULT '',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS budgets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       category TEXT NOT NULL,
-      budget_limit REAL NOT NULL CHECK(budget_limit > 0),
+      budget_limit DOUBLE PRECISION NOT NULL CHECK(budget_limit > 0),
       period TEXT NOT NULL CHECK(period IN ('weekly', 'monthly', 'yearly')),
       start_date TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS savings_goals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
-      target_amount REAL NOT NULL CHECK(target_amount > 0),
-      current_amount REAL NOT NULL DEFAULT 0,
+      target_amount DOUBLE PRECISION NOT NULL CHECK(target_amount > 0),
+      current_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
       target_date TEXT NOT NULL,
       description TEXT DEFAULT '',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS transfers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      from_account_id INTEGER NOT NULL,
-      to_account_id INTEGER NOT NULL,
-      amount REAL NOT NULL CHECK(amount > 0),
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      from_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      to_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      amount DOUBLE PRECISION NOT NULL CHECK(amount > 0),
       description TEXT DEFAULT '',
       date TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (from_account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-      FOREIGN KEY (to_account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS recurring_payments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      account_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
-      amount REAL NOT NULL CHECK(amount > 0),
+      amount DOUBLE PRECISION NOT NULL CHECK(amount > 0),
       category TEXT NOT NULL DEFAULT 'other',
       frequency TEXT NOT NULL CHECK(frequency IN ('weekly', 'monthly', 'yearly')),
       next_payment_date TEXT NOT NULL,
       description TEXT DEFAULT '',
       is_active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Create indexes
   const indexes = [
     'CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id)',
     'CREATE INDEX IF NOT EXISTS idx_income_user ON income(user_id)',
@@ -140,36 +127,37 @@ export function initializeDatabase(db: SqlJsDatabase) {
     'CREATE INDEX IF NOT EXISTS idx_transfers_user ON transfers(user_id)',
     'CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_payments(user_id)',
   ];
-  indexes.forEach((idx) => db.run(idx));
+
+  for (const idx of indexes) {
+    await pool.query(idx);
+  }
 }
 
-export function seedDemoData(db: SqlJsDatabase, userId: number) {
-  // Create default accounts
-  db.run(
-    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES (?, ?, ?, ?, ?, ?)',
+export async function seedDemoData(pool: Pool, userId: number) {
+  const cashRes = await pool.query(
+    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
     [userId, 'Cash', 'cash', 5000, '💵', '#22c55e']
   );
-  const cashId = (db.exec('SELECT last_insert_rowid() as id')[0]?.values[0]?.[0] as number) || 1;
+  const cashId = cashRes.rows[0].id;
 
-  db.run(
-    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES (?, ?, ?, ?, ?, ?)',
+  const savingsRes = await pool.query(
+    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
     [userId, 'Savings', 'savings', 15000, '🏦', '#3b82f6']
   );
-  const savingsId = (db.exec('SELECT last_insert_rowid() as id')[0]?.values[0]?.[0] as number) || 2;
+  const savingsId = savingsRes.rows[0].id;
 
-  db.run(
-    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES (?, ?, ?, ?, ?, ?)',
+  const gcashRes = await pool.query(
+    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
     [userId, 'GCash', 'e-wallet', 3000, '📱', '#0066ff']
   );
-  const gcashId = (db.exec('SELECT last_insert_rowid() as id')[0]?.values[0]?.[0] as number) || 3;
+  const gcashId = gcashRes.rows[0].id;
 
-  db.run(
-    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES (?, ?, ?, ?, ?, ?)',
+  const bankRes = await pool.query(
+    'INSERT INTO accounts (user_id, name, type, initial_balance, icon, color) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
     [userId, 'Bank', 'bank', 10000, '🏦', '#6366f1']
   );
-  const bankId = (db.exec('SELECT last_insert_rowid() as id')[0]?.values[0]?.[0] as number) || 4;
+  const bankId = bankRes.rows[0].id;
 
-  // Income records
   const incomeData = [
     [userId, bankId, 'Monthly Salary', 'salary', 25000, '2026-08-01', 'August 2026 salary'],
     [userId, gcashId, 'Freelance Project', 'freelance', 5000, '2026-08-03', 'Web design project'],
@@ -177,14 +165,13 @@ export function seedDemoData(db: SqlJsDatabase, userId: number) {
     [userId, bankId, 'Monthly Salary', 'salary', 25000, '2026-07-01', 'July 2026 salary'],
     [userId, gcashId, 'Freelance Work', 'freelance', 3500, '2026-07-15', 'Logo design'],
   ];
-  incomeData.forEach((row) => {
-    db.run(
-      'INSERT INTO income (user_id, account_id, source, category, amount, date, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  for (const row of incomeData) {
+    await pool.query(
+      'INSERT INTO income (user_id, account_id, source, category, amount, date, description) VALUES ($1, $2, $3, $4, $5, $6, $7)',
       row
     );
-  });
+  }
 
-  // Expense records
   const expenseData = [
     [userId, cashId, 'Groceries', 'food', 2500, 'Cash', '2026-08-02', 'Weekly groceries'],
     [userId, gcashId, 'Grab Ride', 'transportation', 350, 'E-wallet', '2026-08-03', 'Ride to office'],
@@ -199,14 +186,13 @@ export function seedDemoData(db: SqlJsDatabase, userId: number) {
     [userId, cashId, 'Haircut', 'personal', 200, 'Cash', '2026-07-20', 'Monthly haircut'],
     [userId, gcashId, 'Bus Fare', 'transportation', 200, 'E-wallet', '2026-08-05', 'Daily commute'],
   ];
-  expenseData.forEach((row) => {
-    db.run(
-      'INSERT INTO expenses (user_id, account_id, name, category, amount, payment_method, date, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  for (const row of expenseData) {
+    await pool.query(
+      'INSERT INTO expenses (user_id, account_id, name, category, amount, payment_method, date, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       row
     );
-  });
+  }
 
-  // Budgets
   const budgetData = [
     [userId, 'food', 4000, 'monthly', '2026-08-01'],
     [userId, 'transportation', 2000, 'monthly', '2026-08-01'],
@@ -215,27 +201,25 @@ export function seedDemoData(db: SqlJsDatabase, userId: number) {
     [userId, 'shopping', 2000, 'monthly', '2026-08-01'],
     [userId, 'healthcare', 1500, 'monthly', '2026-08-01'],
   ];
-  budgetData.forEach((row) => {
-    db.run(
-      'INSERT INTO budgets (user_id, category, budget_limit, period, start_date) VALUES (?, ?, ?, ?, ?)',
+  for (const row of budgetData) {
+    await pool.query(
+      'INSERT INTO budgets (user_id, category, budget_limit, period, start_date) VALUES ($1, $2, $3, $4, $5)',
       row
     );
-  });
+  }
 
-  // Savings goals
   const goalData = [
     [userId, 'New Laptop', 40000, 15000, '2027-03-01', 'MacBook Air M3'],
     [userId, 'Emergency Fund', 50000, 20000, '2027-06-01', '6 months of expenses'],
     [userId, 'Vacation', 25000, 8000, '2026-12-20', 'Boracay trip'],
   ];
-  goalData.forEach((row) => {
-    db.run(
-      'INSERT INTO savings_goals (user_id, name, target_amount, current_amount, target_date, description) VALUES (?, ?, ?, ?, ?, ?)',
+  for (const row of goalData) {
+    await pool.query(
+      'INSERT INTO savings_goals (user_id, name, target_amount, current_amount, target_date, description) VALUES ($1, $2, $3, $4, $5, $6)',
       row
     );
-  });
+  }
 
-  // Recurring payments
   const recurringData = [
     [userId, bankId, 'Electric Bill', 1500, 'utilities', 'monthly', '2026-08-12', 'Meralco', 1],
     [userId, bankId, 'Internet Bill', 1699, 'bills', 'monthly', '2026-08-15', 'PLDT Fiber', 1],
@@ -243,23 +227,22 @@ export function seedDemoData(db: SqlJsDatabase, userId: number) {
     [userId, gcashId, 'Netflix', 549, 'entertainment', 'monthly', '2026-09-01', 'Streaming subscription', 1],
     [userId, gcashId, 'Spotify', 149, 'entertainment', 'monthly', '2026-08-25', 'Music subscription', 1],
   ];
-  recurringData.forEach((row) => {
-    db.run(
-      'INSERT INTO recurring_payments (user_id, account_id, name, amount, category, frequency, next_payment_date, description, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  for (const row of recurringData) {
+    await pool.query(
+      'INSERT INTO recurring_payments (user_id, account_id, name, amount, category, frequency, next_payment_date, description, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
       row
     );
-  });
+  }
 
-  // Transfers
   const transferData = [
     [userId, bankId, savingsId, 5000, 'Monthly savings', '2026-08-01'],
     [userId, bankId, gcashId, 2000, 'GCash top-up', '2026-08-02'],
     [userId, cashId, gcashId, 1000, 'Cash to GCash', '2026-08-05'],
   ];
-  transferData.forEach((row) => {
-    db.run(
-      'INSERT INTO transfers (user_id, from_account_id, to_account_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?)',
+  for (const row of transferData) {
+    await pool.query(
+      'INSERT INTO transfers (user_id, from_account_id, to_account_id, amount, description, date) VALUES ($1, $2, $3, $4, $5, $6)',
       row
     );
-  });
+  }
 }

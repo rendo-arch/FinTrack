@@ -7,7 +7,7 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const db = await getDb();
-    const data = getAll(db,
+    const data = await getAll(db,
       `SELECT t.*, a1.name as from_account_name, a2.name as to_account_name 
        FROM transfers t 
        LEFT JOIN accounts a1 ON t.from_account_id = a1.id 
@@ -37,15 +37,13 @@ export async function POST(request: Request) {
     
     const db = await getDb();
     
-    // Optional: check balance if needed, but not strictly required by prompt unless "checks balance" means hard fail.
-    // Let's get from_account to check ownership at least
-    const fromAcc = getOne(db, 'SELECT id FROM accounts WHERE id = ? AND user_id = ?', [from_account_id, user.id]);
-    const toAcc = getOne(db, 'SELECT id FROM accounts WHERE id = ? AND user_id = ?', [to_account_id, user.id]);
+    const fromAcc = await getOne(db, 'SELECT id FROM accounts WHERE id = ? AND user_id = ?', [from_account_id, user.id]);
+    const toAcc = await getOne(db, 'SELECT id FROM accounts WHERE id = ? AND user_id = ?', [to_account_id, user.id]);
     if (!fromAcc || !toAcc) {
       return NextResponse.json({ error: 'Invalid accounts' }, { status: 400 });
     }
 
-    const id = runInsert(db,
+    const id = await runInsert(db,
       'INSERT INTO transfers (user_id, from_account_id, to_account_id, amount, description, date) VALUES (?, ?, ?, ?, ?, ?)',
       [user.id, from_account_id, to_account_id, Number(amount), description || '', date]);
     return NextResponse.json({ success: true, data: { id }, message: 'Transfer added successfully' });

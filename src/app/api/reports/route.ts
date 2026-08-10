@@ -31,15 +31,15 @@ export async function GET(request: Request) {
 
     const db = await getDb();
     
-    const incomeTotalRow = getOne<{total: number}>(db, 'SELECT SUM(amount) as total FROM income WHERE user_id = ? AND date >= ? AND date <= ?', [user.id, startDateStr, endDateStr]);
-    const expensesTotalRow = getOne<{total: number}>(db, 'SELECT SUM(amount) as total FROM expenses WHERE user_id = ? AND date >= ? AND date <= ?', [user.id, startDateStr, endDateStr]);
+    const incomeTotalRow = await getOne<{total: number}>(db, 'SELECT SUM(amount) as total FROM income WHERE user_id = ? AND date >= ? AND date <= ?', [user.id, startDateStr, endDateStr]);
+    const expensesTotalRow = await getOne<{total: number}>(db, 'SELECT SUM(amount) as total FROM expenses WHERE user_id = ? AND date >= ? AND date <= ?', [user.id, startDateStr, endDateStr]);
     
     const totalIncome = incomeTotalRow?.total || 0;
     const totalExpenses = expensesTotalRow?.total || 0;
     const netBalance = totalIncome - totalExpenses;
 
-    const incomeByCategory = getAll(db, 'SELECT category, SUM(amount) as total FROM income WHERE user_id = ? AND date >= ? AND date <= ? GROUP BY category', [user.id, startDateStr, endDateStr]);
-    const expensesByCategory = getAll(db, 'SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? AND date >= ? AND date <= ? GROUP BY category', [user.id, startDateStr, endDateStr]);
+    const incomeByCategory = await getAll(db, 'SELECT category, SUM(amount) as total FROM income WHERE user_id = ? AND date >= ? AND date <= ? GROUP BY category', [user.id, startDateStr, endDateStr]);
+    const expensesByCategory = await getAll(db, 'SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? AND date >= ? AND date <= ? GROUP BY category', [user.id, startDateStr, endDateStr]);
 
     return NextResponse.json({
       success: true,

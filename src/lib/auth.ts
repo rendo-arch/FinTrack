@@ -45,7 +45,7 @@ export async function getCurrentUser(): Promise<User | null> {
     if (!payload) return null;
 
     const db = await getDb();
-    const user = getOne<User>(
+    const user = await getOne<User>(
       db,
       'SELECT id, name, email, currency, created_at, updated_at FROM users WHERE id = ?',
       [payload.userId]

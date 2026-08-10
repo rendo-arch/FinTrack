@@ -14,17 +14,17 @@ export async function PUT(request: Request) {
     }
 
     const db = await getDb();
-    const dbUser = getOne<{password_hash: string}>(db, 'SELECT password_hash FROM users WHERE id = ?', [user.id]);
+    const dbUser = await getOne<{password_hash: string}>(db, 'SELECT password_hash FROM users WHERE id = ?', [user.id]);
     
     if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    const isValid = await verifyPassword(currentPassword, dbUser.password_hash);
+    const isValid = verifyPassword(currentPassword, dbUser.password_hash);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid current password' }, { status: 400 });
     }
 
-    const newHash = await hashPassword(newPassword);
-    runQuery(db, 'UPDATE users SET password_hash = ? WHERE id = ?', [newHash, user.id]);
+    const newHash = hashPassword(newPassword);
+    await runQuery(db, 'UPDATE users SET password_hash = ? WHERE id = ?', [newHash, user.id]);
     
     return NextResponse.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {

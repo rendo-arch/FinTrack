@@ -33,16 +33,16 @@ export default async function DashboardPage() {
 
   const db = await getDb();
 
-  const incomeRes = getOne<{ total: number }>(db, 'SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE user_id = ?', [user.id]);
-  const expensesRes = getOne<{ total: number }>(db, 'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = ?', [user.id]);
-  const savingsRes = getOne<{ total: number }>(db, 'SELECT COALESCE(SUM(current_amount), 0) as total FROM savings_goals WHERE user_id = ?', [user.id]);
+  const incomeRes = await getOne<{ total: number }>(db, 'SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE user_id = ?', [user.id]);
+  const expensesRes = await getOne<{ total: number }>(db, 'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE user_id = ?', [user.id]);
+  const savingsRes = await getOne<{ total: number }>(db, 'SELECT COALESCE(SUM(current_amount), 0) as total FROM savings_goals WHERE user_id = ?', [user.id]);
 
   const totalIncome = incomeRes?.total || 0;
   const totalExpenses = expensesRes?.total || 0;
   const totalSavings = savingsRes?.total || 0;
   const currentBalance = totalIncome - totalExpenses;
 
-  const budgets = getAll(db, `
+  const budgets = await getAll(db, `
     SELECT b.*, COALESCE((
       SELECT SUM(e.amount) FROM expenses e 
       WHERE e.user_id = ? AND e.category = b.category 
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
     FROM budgets b WHERE b.user_id = ?
   `, [user.id, user.id]);
 
-  const recentTransactions = getAll(db, `
+  const recentTransactions = await getAll(db, `
     SELECT 'income' as type, i.source as tx_name, i.category, i.amount, i.date, a.name as account_name 
     FROM income i JOIN accounts a ON i.account_id = a.id WHERE i.user_id = ?
     UNION ALL
@@ -60,13 +60,13 @@ export default async function DashboardPage() {
     ORDER BY date DESC LIMIT 8
   `, [user.id, user.id]);
 
-  const upcomingExpenses = getAll(db, `
+  const upcomingExpenses = await getAll(db, `
     SELECT name, amount, next_payment_date FROM recurring_payments 
     WHERE user_id = ? AND is_active = 1 ORDER BY next_payment_date ASC LIMIT 5
   `, [user.id]);
 
   // Compute chart data from actual DB
-  const expensesByCategory = getAll(db, `
+  const expensesByCategory = await getAll(db, `
     SELECT category, SUM(amount) as total FROM expenses 
     WHERE user_id = ? GROUP BY category ORDER BY total DESC
   `, [user.id]);
@@ -89,14 +89,14 @@ export default async function DashboardPage() {
 
   const sixMonthsAgo = last6Months[0].key + '-01';
 
-  const monthlyIncome = getAll<{ month: string; total: number }>(db, `
+  const monthlyIncome = await getAll<{ month: string; total: number }>(db, `
     SELECT strftime('%Y-%m', date) as month, SUM(amount) as total
     FROM income WHERE user_id = ? AND date >= ?
     GROUP BY strftime('%Y-%m', date)
     ORDER BY month ASC
   `, [user.id, sixMonthsAgo]);
 
-  const monthlyExpenses = getAll<{ month: string; total: number }>(db, `
+  const monthlyExpenses = await getAll<{ month: string; total: number }>(db, `
     SELECT strftime('%Y-%m', date) as month, SUM(amount) as total
     FROM expenses WHERE user_id = ? AND date >= ?
     GROUP BY strftime('%Y-%m', date)

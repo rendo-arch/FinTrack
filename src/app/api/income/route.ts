@@ -7,7 +7,7 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const db = await getDb();
-    const data = getAll(db,
+    const data = await getAll(db,
       `SELECT i.*, a.name as account_name FROM income i 
        LEFT JOIN accounts a ON i.account_id = a.id 
        WHERE i.user_id = ? ORDER BY i.date DESC`, [user.id]);
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 });
     }
     const db = await getDb();
-    const id = runInsert(db,
+    const id = await runInsert(db,
       'INSERT INTO income (user_id, account_id, source, category, amount, date, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [user.id, account_id, source, category || 'other', Number(amount), date, description || '']);
     return NextResponse.json({ success: true, data: { id }, message: 'Income added successfully' });

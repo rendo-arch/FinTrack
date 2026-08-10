@@ -16,14 +16,14 @@ export async function POST(request: Request) {
 
     const db = await getDb();
 
-    const existingUser = getOne(db, 'SELECT id FROM users WHERE email = ?', [email]);
+    const existingUser = await getOne(db, 'SELECT id FROM users WHERE email = ?', [email]);
     if (existingUser) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
     }
 
     const passwordHash = hashPassword(password);
 
-    const userId = runInsert(
+    const userId = await runInsert(
       db,
       'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
       [name, email, passwordHash]

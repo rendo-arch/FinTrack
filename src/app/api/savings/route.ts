@@ -7,7 +7,7 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const db = await getDb();
-    const data = getAll(db,
+    const data = await getAll(db,
       `SELECT * FROM savings_goals WHERE user_id = ?`, [user.id]);
     return NextResponse.json({ success: true, data });
   } catch (error) {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name, target_amount, and target_date are required' }, { status: 400 });
     }
     const db = await getDb();
-    const id = runInsert(db,
+    const id = await runInsert(db,
       'INSERT INTO savings_goals (user_id, name, target_amount, current_amount, target_date, description) VALUES (?, ?, ?, ?, ?, ?)',
       [user.id, name, Number(target_amount), Number(current_amount || 0), target_date, description || '']);
     return NextResponse.json({ success: true, data: { id }, message: 'Savings goal added successfully' });
